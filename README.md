@@ -1,6 +1,6 @@
 # Justificatifs de Vêture – Allocation Mensuelle
 
-Outil Python automatisant la génération du formulaire **"Justificatifs de Vêture – Allocation Mensuelle"** au format Excel, puis la production d'un **PDF final** fusionnant le formulaire et les photos de factures.
+Outil Python qui génère un **classeur Excel macro-activé** (`.xlsm`) tout-en-un pour la gestion des justificatifs de vêture.
 
 ---
 
@@ -8,42 +8,87 @@ Outil Python automatisant la génération du formulaire **"Justificatifs de Vêt
 
 | Fonctionnalité | Détail |
 |---|---|
-| 📊 Classeur Excel | Feuilles `Formulaire` + `Configuration` |
-| 🔽 Liste déroulante | Sélection de l'enfant depuis la Configuration |
-| 🔗 Référent auto | Rempli automatiquement selon l'enfant choisi (formule INDEX/MATCH) |
-| 📅 Date automatique | `=TODAY()` – mise à jour à chaque ouverture |
-| 📄 Export PDF | Via LibreOffice (cross-platform) |
-| 🖼️ Fusion factures | Images JPG/PNG/HEIC → PDF → fusion avec formulaire |
+| 📊 Classeur unique `.xlsm` | Feuilles `Formulaire` + `Configuration` |
+| 🔽 Liste déroulante | Sélection de l'enfant (depuis `Configuration`) |
+| 🔗 Référent automatique | Rempli via formule INDEX/MATCH |
+| 📅 Date automatique | `=TODAY()` mise à jour à chaque ouverture |
+| 📎 Bouton « Ajouter des factures » | Copie les photos sélectionnées dans `invoices/` |
+| 📄 Bouton « Exporter en PDF » | Export natif Excel (mode impression), propose la réinitialisation après |
+| 🔄 Réinitialisation automatique | Efface enfant, factures saisies, images `invoices/` en un clic |
 
 ---
 
 ## Prérequis
 
-- **Python 3.9+**
-- **LibreOffice** (pour la conversion Excel → PDF) :
-  - Linux : `sudo apt install libreoffice`
-  - macOS : [libreoffice.org](https://www.libreoffice.org/download/download/)
-  - Windows : [libreoffice.org](https://www.libreoffice.org/download/download/) (ou utiliser Excel COM, voir ci-dessous)
+- **Python 3.9+** avec `openpyxl` : `pip install openpyxl`
+- **Microsoft Excel** (Windows/macOS) pour utiliser les macros et l'export PDF natif
 
 ---
 
 ## Installation
 
 ```bash
-# 1. Cloner le dépôt
 git clone https://github.com/Keshiiira/justificatif-veture.git
 cd justificatif-veture
-
-# 2. Créer un environnement virtuel
-python -m venv venv
-source venv/bin/activate      # Windows : venv\Scripts\activate
-
-# 3. Installer les dépendances
 pip install -r requirements.txt
-
-# Support optionnel HEIC (photos iPhone) :
-pip install pillow-heif
 ```
+
+---
+
+## Générer le classeur
+
+```bash
+python src/generate_excel.py
+# Génère : output/justificatif_veture.xlsm
+```
+
+Ouvrez le fichier dans **Excel**, activez les macros si demandé.
+
+---
+
+## Configuration initiale
+
+Onglet **Configuration** :
+
+| Champ | Description |
+|---|---|
+| Nom / Prénom AF | Votre nom complet |
+| Adresse | Votre adresse |
+| Téléphone | Votre téléphone |
+| Email | Votre email |
+| Fait à (ville) | Ville de signature |
+| Tableau enfants | Colonne A = enfant, Colonne B = référent social |
+
+---
+
+## Utilisation mensuelle (onglet Formulaire)
+
+### 1. Remplir le formulaire
+
+1. Sélectionner l'enfant dans la liste déroulante (`C11`) → le référent se remplit automatiquement
+2. Saisir les factures dans le tableau (lignes 16–25) : type, fournisseur, date, coût
+3. Renseigner le champ M./Mme (`C32`) si nécessaire
+
+### 2. (Optionnel) Ajouter des photos de factures
+
+Cliquer sur le bouton **📎 Ajouter des factures** → sélectionner les images.  
+Elles sont copiées dans le dossier `invoices/` à côté du classeur.
+
+### 3. Exporter en PDF
+
+Cliquer sur le bouton **📄 Exporter en PDF** :
+- Une fenêtre de sauvegarde s'ouvre (nom pré-rempli avec le nom de l'enfant)
+- Le PDF est créé via l'export natif Excel (mise en page impression)
+- Le PDF s'ouvre automatiquement
+- Une boîte de dialogue propose de **réinitialiser le formulaire** pour le prochain enfant
+
+### 4. Réinitialisation pour le prochain enfant
+
+En cliquant **Oui** après l'export PDF, le formulaire efface :
+- L'identité de l'enfant (`C11`)
+- Le détail des factures (lignes 16–25)
+- Le champ M./Mme (`C32`)
+- Toutes les images dans `invoices/`
 
 ---
 
@@ -52,148 +97,12 @@ pip install pillow-heif
 ```
 justificatif-veture/
 ├── src/
-│   ├── generate_excel.py   # Génère le classeur Excel
-│   └── generate_pdf.py     # Exporte en PDF et fusionne les factures
-├── invoices/               # Déposez ici les photos de factures
+│   ├── generate_excel.py   # Génère le classeur .xlsm
+│   ├── generate_pdf.py     # (optionnel) fusion PDF via Python
+│   └── vba_builder.py      # Constructeur OLE2 du vbaProject.bin
+├── invoices/               # Photos de factures (géré par le bouton)
 │   └── .gitkeep
-├── output/                 # Créé automatiquement (ignoré par git)
+├── output/                 # Créé automatiquement
 ├── requirements.txt
-├── .gitignore
 └── README.md
-```
-
----
-
-## Configuration initiale
-
-Ouvrez `output/justificatif_veture.xlsx` (après génération) et allez sur l'onglet **Configuration** :
-
-### Informations fixes (lignes 4–8)
-
-| Champ | Valeur par défaut | À modifier |
-|---|---|---|
-| Nom / Prénom AF | `Dupont Marie` | ✅ |
-| Adresse | `12 Rue des Lilas, 09000 Foix` | ✅ |
-| Téléphone | `06 12 34 56 78` | ✅ |
-| Email | `marie.dupont@email.fr` | ✅ |
-| Fait à (ville) | `Foix` | Si besoin |
-
-> Vous pouvez aussi modifier les valeurs par défaut directement dans `src/generate_excel.py` (dictionnaire `CONFIG_AF`).
-
-### Ajouter des enfants et référents (lignes 12–29)
-
-Dans l'onglet **Configuration**, remplissez le tableau :
-
-| Colonne A – Enfant | Colonne B – Référent social |
-|---|---|
-| Martin Lucas | Mme Bernard Sophie |
-| Petit Emma | M. Leclerc Paul |
-| *(ajoutez ici)* | *(référent correspondant)* |
-
-La liste déroulante de l'onglet **Formulaire** se met à jour automatiquement.
-
----
-
-## Utilisation mensuelle
-
-### Étape 1 – Générer le classeur Excel
-
-```bash
-python src/generate_excel.py
-# Génère : output/justificatif_veture.xlsx
-```
-
-Options :
-```bash
-python src/generate_excel.py --output chemin/vers/fichier.xlsx
-```
-
-### Étape 2 – Remplir le formulaire
-
-Ouvrez `output/justificatif_veture.xlsx` dans Excel ou LibreOffice Calc :
-
-1. **Onglet Formulaire** :
-   - Sélectionnez l'enfant dans la liste déroulante (cellule `C11`) → le référent social se remplit automatiquement (`C12`).
-   - Saisissez les factures dans le tableau (lignes 16–25) : type d'achat, fournisseur, date, coût.
-   - Vérifiez la date (`E31`) et la ville (`C31`).
-   - Signez (cellule `C32`).
-
-### Étape 3 – Ajouter les photos de factures
-
-Copiez vos photos dans le dossier `invoices/` :
-```
-invoices/
-  facture_vetements_jan.jpg
-  facture_chaussures.png
-  ticket_caisse.jpeg
-```
-
-Formats supportés : `.jpg`, `.jpeg`, `.png` (et `.heic`/`.heif` avec `pillow-heif`).
-
-### Étape 4 – Générer le PDF final
-
-```bash
-python src/generate_pdf.py
-# Génère :
-#   output/formulaire.pdf  (export Excel)
-#   output/final.pdf       (formulaire + toutes les factures)
-```
-
-Options :
-```bash
-python src/generate_pdf.py \
-  --excel   output/justificatif_veture.xlsx \
-  --invoices invoices/ \
-  --output  output/final.pdf
-```
-
----
-
-## Export Excel → PDF : détail des méthodes
-
-### LibreOffice (recommandé, cross-platform)
-
-Le script détecte automatiquement `libreoffice` ou `soffice` dans le PATH.
-
-```bash
-# Vérification :
-libreoffice --version
-```
-
-### Windows avec Excel COM (manuel)
-
-Si LibreOffice n'est pas installé sous Windows, vous pouvez exporter manuellement depuis Excel :
-`Fichier → Exporter → Créer un document PDF/XPS`
-
-Puis utilisez uniquement la fusion :
-```bash
-python src/generate_pdf.py --excel ""   # (sauter l'étape Excel)
-```
-> Dans ce cas, copiez votre `formulaire.pdf` manuellement dans `output/` avant de lancer la fusion.
-
----
-
-## Support HEIC (photos iPhone)
-
-```bash
-pip install pillow-heif
-```
-
-Décommentez la ligne correspondante dans `requirements.txt`, puis relancez. Les fichiers `.heic` et `.heif` seront automatiquement détectés.
-
----
-
-## Commandes de validation complète
-
-```bash
-# 1. Générer l'Excel
-python src/generate_excel.py
-
-# 2. (Optionnel) Ajouter des images test dans invoices/
-
-# 3. Générer le PDF final
-python src/generate_pdf.py
-
-# 4. Vérifier les sorties
-ls -lh output/
 ```
