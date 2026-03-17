@@ -1,0 +1,5 @@
+openpyxl>=3.1.0
+Pillow>=10.0.0
+pypdf>=4.0.0
+# Support optionnel HEIC (décommenter si nécessaire) :
+# pillow-heif>=0.13.0
