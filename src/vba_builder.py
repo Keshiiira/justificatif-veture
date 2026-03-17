@@ -235,6 +235,8 @@ def _build_dir_stream(module_names: list[str]) -> bytes:
         w(0x001C, b"")                       # MODULEDOCSTRING
         w(0x0048, b"")                       # MODULEDOCSTRINGUNICODE
         w(0x0031, struct.pack("<I", 0))      # MODULEOFFSET
+        w(0x001E, struct.pack("<I", 0))      # MODULEHELPCONTEXT (requis MS-OVBA §2.3.4.2.3.2)
+        w(0x002C, struct.pack("<H", 0xFFFF)) # MODULECOOKIE (requis MS-OVBA §2.3.4.2.3.2)
         out.extend(struct.pack("<HI", 0x0021, 0))  # MODULETYPE: standard
         out.extend(struct.pack("<HI", 0x002B, 0))  # MODULE terminator
 
