@@ -52,6 +52,7 @@ Onglet **Configuration** :
 | Nom / Prénom AF | Votre nom complet |
 | Adresse | Votre adresse |
 | Téléphone | Votre téléphone |
+| Fax | Votre numéro de fax (facultatif) |
 | Email | Votre email |
 | Fait à (ville) | Ville de signature |
 | Tableau enfants | Colonne A = enfant, Colonne B = référent social |
@@ -62,10 +63,10 @@ Onglet **Configuration** :
 
 ### 1. Remplir le formulaire
 
-1. Renseigner le **Mois et Année** en haut du formulaire
-2. Sélectionner l'enfant dans la liste déroulante (`C13`) → le référent se remplit automatiquement
-3. Saisir les factures dans le tableau (lignes 18–27) : nature, fournisseur, date, montant
-4. Renseigner le champ M./Mme (`C34`) si nécessaire
+1. Sélectionner l'enfant dans la liste déroulante (`E13`) → le référent se remplit automatiquement
+2. Saisir les factures dans le tableau (lignes 17–24) : N°, type d'achat, fournisseur, date, coût
+3. Le TOTAL est calculé automatiquement (ligne 25)
+4. Renseigner le champ **M./Mme** (`B30:G30`) si nécessaire
 
 ---
 
