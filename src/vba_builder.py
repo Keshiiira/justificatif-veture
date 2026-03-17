@@ -184,7 +184,7 @@ def _vba_compress(data: bytes) -> bytes:
         chunk = data[pos: pos + 4096]
         # Compléter à exactement 4096 octets
         chunk = chunk + b"\x00" * (4096 - len(chunk))
-        out += struct.pack("<H", 0x3FFD)  # en-tête chunk brut
+        out += struct.pack("<H", 0x6FFF)  # en-tête chunk brut (sig=0b011, flag=0, size=4095)
         out += chunk
         pos += 4096
     return bytes(out)
@@ -220,8 +220,8 @@ def _build_dir_stream(module_names: list[str]) -> bytes:
     w(0x003C, b"")                           # CONSTANTSUNICODE
 
     # En-tête MODULES
-    out.extend(struct.pack("<HI", 0x000F, 4))
-    out.extend(struct.pack("<HH", len(module_names), 0))
+    out.extend(struct.pack("<HI", 0x000F, 2))         # MODULESCOUNT RecordSize MUST be 2
+    out.extend(struct.pack("<H", len(module_names)))  # Count (WORD)
     w(0x0013, struct.pack("<H", 0xFFFF))     # COOKIE
 
     # Enregistrements par module
@@ -256,7 +256,14 @@ def _build_project_stream(module_names: list[str]) -> bytes:
         'DPB=""',
         'GC=""',
     ]
-    return ("\r\n".join(lines) + "\r\n").encode("latin-1")
+    raw = ("\r\n".join(lines) + "\r\n").encode("latin-1")
+    # Les flux CFB < 4096 octets doivent être dans le mini-flux (non implémenté ici).
+    # On complète jusqu'à 4096 octets pour que le flux soit stocké dans un secteur
+    # normal, évitant ainsi la dépendance au mini-flux.
+    MINI_CUTOFF = 4096
+    if len(raw) < MINI_CUTOFF:
+        raw = raw + b"\x00" * (MINI_CUTOFF - len(raw))
+    return raw
 
 
 # ──────────────────────────────────────────────────────────────────
@@ -323,7 +330,7 @@ def build_vba_project(modules: Dict[str, str]) -> bytes:
     module_names = list(modules.keys())
 
     # ── Calcul des flux ───────────────────────────────────────────
-    vba_proj_raw = b"\xCC\x61\x00\x00"   # stub minimal _VBA_PROJECT
+    vba_proj_raw = b""               # _VBA_PROJECT : p-code compilé facultatif
     dir_raw      = _vba_compress(_build_dir_stream(module_names))
     module_raws  = {
         name: _vba_compress(src.encode("latin-1"))
