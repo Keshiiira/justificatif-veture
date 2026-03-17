@@ -1,18 +1,16 @@
 """
 generate_excel.py
 =================
-Génère le classeur Excel macro-activé "Justificatifs de Vêture".
+Génère le classeur Excel "Justificatifs de Vêture".
 Feuilles : Formulaire + Configuration.
-Fonctionnalités : bordures corrigées sur cellules fusionnées,
-deux boutons VBA (Ajouter factures / Générer PDF), format .xlsm.
+Fonctionnalités : bordures corrigées sur cellules fusionnées, format .xlsx.
 """
 from __future__ import annotations
-import argparse, io, os, zipfile
+import argparse, os
 from openpyxl import Workbook
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import range_boundaries
 from openpyxl.worksheet.datavalidation import DataValidation
-from vba_builder import VBA_SOURCE, build_vba_project
 
 BLEU_EN_TETE = "1F4E79"
 BLEU_CLAIR   = "D6E4F0"
@@ -163,118 +161,9 @@ def build_formulaire_sheet(wb):
     ws.print_area="A1:E36"
     ws.page_margins=PageMargins(left=0.5,right=0.5,top=0.75,bottom=0.75,header=0.3,footer=0.3)
 
-DRAWING_XML = """\
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<xdr:wsDr xmlns:xdr="http://schemas.openxmlformats.org/drawingml/2006/spreadsheetDrawing"
-    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
-    xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <xdr:twoCellAnchor editAs="oneCell">
-    <xdr:from><xdr:col>1</xdr:col><xdr:colOff>114300</xdr:colOff><xdr:row>37</xdr:row><xdr:rowOff>57150</xdr:rowOff></xdr:from>
-    <xdr:to><xdr:col>3</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>38</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
-    <xdr:sp macro="AjouterFactures" textlink="">
-      <xdr:nvSpPr>
-        <xdr:cNvPr id="1" name="BtnAjouterFactures"/>
-        <xdr:cNvSpPr><a:spLocks noGrp="1"/></xdr:cNvSpPr>
-      </xdr:nvSpPr>
-      <xdr:spPr>
-        <a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="375623"/></a:solidFill>
-        <a:ln w="19050"><a:solidFill><a:srgbClr val="70AD47"/></a:solidFill></a:ln>
-      </xdr:spPr>
-      <xdr:txBody>
-        <a:bodyPr anchor="ctr"/>
-        <a:lstStyle/>
-        <a:p><a:pPr algn="ctr"/><a:r>
-          <a:rPr lang="fr-FR" b="1" sz="1100" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr>
-          <a:t>Ajouter des factures</a:t>
-        </a:r></a:p>
-      </xdr:txBody>
-    </xdr:sp>
-    <xdr:clientData/>
-  </xdr:twoCellAnchor>
-  <xdr:twoCellAnchor editAs="oneCell">
-    <xdr:from><xdr:col>3</xdr:col><xdr:colOff>114300</xdr:colOff><xdr:row>37</xdr:row><xdr:rowOff>57150</xdr:rowOff></xdr:from>
-    <xdr:to><xdr:col>5</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>38</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to>
-    <xdr:sp macro="GenererPDF" textlink="">
-      <xdr:nvSpPr>
-        <xdr:cNvPr id="2" name="BtnGenererPDF"/>
-        <xdr:cNvSpPr><a:spLocks noGrp="1"/></xdr:cNvSpPr>
-      </xdr:nvSpPr>
-      <xdr:spPr>
-        <a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/></a:xfrm>
-        <a:prstGeom prst="roundRect"><a:avLst/></a:prstGeom>
-        <a:solidFill><a:srgbClr val="1F4E79"/></a:solidFill>
-        <a:ln w="19050"><a:solidFill><a:srgbClr val="2E75B6"/></a:solidFill></a:ln>
-      </xdr:spPr>
-      <xdr:txBody>
-        <a:bodyPr anchor="ctr"/>
-        <a:lstStyle/>
-        <a:p><a:pPr algn="ctr"/><a:r>
-          <a:rPr lang="fr-FR" b="1" sz="1100" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:rPr>
-          <a:t>Generer le PDF</a:t>
-        </a:r></a:p>
-      </xdr:txBody>
-    </xdr:sp>
-    <xdr:clientData/>
-  </xdr:twoCellAnchor>
-</xdr:wsDr>
-"""
-
-def save_as_xlsm(wb: Workbook, output_path: str) -> None:
+def save_as_xlsx(wb: Workbook, output_path: str) -> None:
     os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
-    buf = io.BytesIO(); wb.save(buf); buf.seek(0)
-    # Trouver le fichier de la feuille Formulaire
-    import re
-    with zipfile.ZipFile(buf, "r") as zf:
-        names = zf.namelist()
-        members = {n: zf.read(n) for n in names}
-    wb_xml = members["xl/workbook.xml"].decode("utf-8")
-    wb_rels_xml = members["xl/_rels/workbook.xml.rels"].decode("utf-8")
-    m = re.search(r'<sheet[^>]+name="Formulaire"[^>]+r:id="(rId\d+)"', wb_xml)
-    sheet_filename = "sheet1.xml"
-    if m:
-        rid = m.group(1)
-        m2 = re.search(rf'Id="{rid}"[^>]+Target="([^"]+)"', wb_rels_xml)
-        if m2: sheet_filename = os.path.basename(m2.group(1))
-    vba_bytes = build_vba_project({"GestionVeture": VBA_SOURCE})
-    # Patcher Content_Types
-    ct = members["[Content_Types].xml"].decode("utf-8")
-    ct = ct.replace('ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"',
-                    'ContentType="application/vnd.ms-excel.sheet.macroEnabled.12+xml"')
-    if "vbaProject" not in ct:
-        ct = ct.replace("</Types>",'<Override PartName="/xl/vbaProject.bin" ContentType="application/vnd.ms-office.vbaProject"/></Types>')
-    members["[Content_Types].xml"] = ct.encode("utf-8")
-    # Patcher workbook rels
-    wr = wb_rels_xml
-    if "vbaProject" not in wr:
-        wr = wr.replace("</Relationships>",'<Relationship Id="rIdVBA" Type="http://schemas.microsoft.com/office/2006/relationships/vbaProject" Target="vbaProject.bin"/></Relationships>')
-    members["xl/_rels/workbook.xml.rels"] = wr.encode("utf-8")
-    members["xl/vbaProject.bin"] = vba_bytes
-    members["xl/drawings/drawing1.xml"] = DRAWING_XML.encode("utf-8")
-    members["xl/drawings/_rels/drawing1.xml.rels"] = b'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>'
-    # Relation feuille → drawing
-    rels_key = f"xl/worksheets/_rels/{sheet_filename}.rels"
-    draw_rel = '<Relationship Id="rIdDraw1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" Target="../drawings/drawing1.xml"/>'
-    if rels_key in members:
-        sr = members[rels_key].decode("utf-8")
-        if "drawing" not in sr: sr = sr.replace("</Relationships>", draw_rel + "</Relationships>")
-    else:
-        sr = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + draw_rel + "</Relationships>"
-    members[rels_key] = sr.encode("utf-8")
-    # Ajouter <drawing> dans le worksheet
-    ws_key = f"xl/worksheets/{sheet_filename}"
-    if ws_key in members:
-        wx = members[ws_key].decode("utf-8")
-        # Assurer namespace r:
-        if 'xmlns:r=' not in wx:
-            wx = wx.replace("<worksheet ", '<worksheet xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" ', 1)
-        if "<drawing " not in wx:
-            wx = wx.replace("</worksheet>", '<drawing r:id="rIdDraw1"/></worksheet>')
-        members[ws_key] = wx.encode("utf-8")
-    with zipfile.ZipFile(output_path, "w", zipfile.ZIP_DEFLATED) as zf_out:
-        for name, data in members.items():
-            zf_out.writestr(name, data)
+    wb.save(output_path)
     print(f"✅  Classeur Excel généré : {output_path}")
 
 def generate(output_path: str) -> None:
@@ -282,11 +171,11 @@ def generate(output_path: str) -> None:
     if "Sheet" in wb.sheetnames: del wb["Sheet"]
     build_formulaire_sheet(wb)
     build_configuration_sheet(wb)
-    save_as_xlsm(wb, output_path)
+    save_as_xlsx(wb, output_path)
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Génère le classeur Excel Justificatifs de Vêture (.xlsm).")
-    parser.add_argument("--output", default="output/justificatif_veture.xlsm", help="Chemin du fichier Excel généré")
+    parser = argparse.ArgumentParser(description="Génère le classeur Excel Justificatifs de Vêture (.xlsx).")
+    parser.add_argument("--output", default="output/justificatif_veture.xlsx", help="Chemin du fichier Excel généré")
     args = parser.parse_args()
     generate(args.output)
 
