@@ -62,9 +62,10 @@ Onglet **Configuration** :
 
 ### 1. Remplir le formulaire
 
-1. Sélectionner l'enfant dans la liste déroulante (`C11`) → le référent se remplit automatiquement
-2. Saisir les factures dans le tableau (lignes 16–25) : type, fournisseur, date, coût
-3. Renseigner le champ M./Mme (`C32`) si nécessaire
+1. Renseigner le **Mois et Année** en haut du formulaire
+2. Sélectionner l'enfant dans la liste déroulante (`C13`) → le référent se remplit automatiquement
+3. Saisir les factures dans le tableau (lignes 18–27) : nature, fournisseur, date, montant
+4. Renseigner le champ M./Mme (`C34`) si nécessaire
 
 ---
 
